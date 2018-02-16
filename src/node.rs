@@ -5,15 +5,17 @@ pub type Child<'a> = Option<Box<Node<'a>>>;
 pub struct Node<'a> {
     hasher: &'a Digest,
     left: Child<'a>,
-    right: Child<'a>
+    right: Child<'a>,
+    hash_value: Box<[u8]>
 }
 
 impl<'a> Node<'a> {
-    fn new(hasher: &'a Digest) -> Node {
+    fn new(hasher: &'a Digest, hash: &[u8]) -> Node<'a> {
         Node {
             hasher: hasher,
             left: None,
-            right: None
+            right: None,
+            hash_value: Box::from(hash)
         }
     }
 
