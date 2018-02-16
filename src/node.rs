@@ -1,6 +1,6 @@
 use digest::Digest;
 
-pub type Child<'a> = Option<&'a Node<'a>>;
+pub type Child<'a> = Option<Box<Node<'a>>>;
 
 pub struct Node<'a> {
     hasher: &'a Digest,
@@ -10,8 +10,8 @@ pub struct Node<'a> {
 
 impl<'a> Node<'a> {
     fn height(&self) -> usize {
-        match (self.left, self.right) {
-            (Some(left), Some(right)) => {
+        match (&self.left, &self.right) {
+            (&Some(ref left), &Some(ref right)) => {
                 let (left_h, right_h) = (left.height(), right.height());
                 if left_h >= right_h {
                     left_h
@@ -19,8 +19,8 @@ impl<'a> Node<'a> {
                     right_h
                 }
             },
-            (Some(left), _) => left.height(),
-            (_, Some(right)) => right.height(),
+            (&Some(ref left), _) => left.height(),
+            (_, &Some(ref right)) => right.height(),
             _ => 0
         }
     }
