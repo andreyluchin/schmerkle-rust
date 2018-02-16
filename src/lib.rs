@@ -1,3 +1,5 @@
+mod digest;
+
 #[cfg(test)]
 mod tests {
     #[test]
