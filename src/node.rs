@@ -9,6 +9,14 @@ pub struct Node<'a> {
 }
 
 impl<'a> Node<'a> {
+    fn new(hasher: &'a Digest) -> Node {
+        Node {
+            hasher: hasher,
+            left: None,
+            right: None
+        }
+    }
+
     fn height(&self) -> usize {
         match (&self.left, &self.right) {
             (&Some(ref left), &Some(ref right)) => {
