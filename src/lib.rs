@@ -1,4 +1,5 @@
 mod digest;
+mod node;
 
 #[cfg(test)]
 mod tests {
