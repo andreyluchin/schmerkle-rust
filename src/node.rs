@@ -9,9 +9,10 @@ pub enum Node<'a> {
 
 impl<'a> Node<'a> {
     fn height(&self) -> usize {
-        match self {
-            &Node::Branch(ref b) => b.height(),
-            &Node::Leaf(ref b) => b.height()
+        if let &Node::Branch(ref b) = self {
+            b.height()
+        } else {
+            0
         }
     }
 }
