@@ -1,4 +1,4 @@
-mod digest;
+mod hash;
 mod node;
 
 #[cfg(test)]
