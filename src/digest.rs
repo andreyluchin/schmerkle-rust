@@ -1,9 +1,15 @@
-pub trait Digest {
-    fn input(&mut self, input: &[u8]);
-    fn result(&mut self, output: &[u8]);
-    fn reset(&mut self);
-}
+use std::hash::Hasher;
 
-pub trait DigestHash {
-    fn hash<D: Digest>(&self, state: &mut D);
+
+// Standard Hasher trait is constrained to 64bit hashes
+// by finish() method.
+// MerkleHasher extends Hasher to be a size-agnostic alternative.
+// Also MerkleHasher works with std::hash::Hash (yay!).
+pub trait MerkleHasher: Hasher
+{
+    // Just like finish, but not constrained to 64bits
+    fn finish_full(&self) -> &[u8];
+
+    // Why doesn't standard Hasher has this?
+    fn reset(&mut self);
 }
