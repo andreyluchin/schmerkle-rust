@@ -8,13 +8,10 @@ pub trait MerkleHasher: Hasher
 {
     // Just like finish, but not constrained to 64bits
     fn finish_full(&self) -> Box<[u8]>;
-
-    // Why doesn't standard Hasher has this?
-    fn reset(&mut self);
 }
 
 // Analogous to std::hash::BuildHasher
-pub trait BuildMerkleHasher {
+pub trait BuildMerkleHasher : Clone {
     type Hasher: MerkleHasher;
     fn build_hasher(&self) -> Self::Hasher;
 }

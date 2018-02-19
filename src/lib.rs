@@ -1,5 +1,7 @@
+#![feature(box_patterns)]
 mod hash;
 mod node;
+mod tree;
 
 #[cfg(test)]
 mod tests {
