@@ -1,8 +1,8 @@
 #![feature(box_patterns)]
+#![allow(dead_code)]
 mod hash;
 mod node;
 mod tree;
-mod proof;
 
 #[cfg(test)]
 mod tests {

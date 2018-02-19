@@ -10,6 +10,7 @@ pub trait MerkleHasher: Hasher
     fn finish_full(&self) -> Box<[u8]>;
 }
 
+
 // Analogous to std::hash::BuildHasher
 pub trait BuildMerkleHasher : Clone {
     type Hasher: MerkleHasher;
