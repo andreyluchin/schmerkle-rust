@@ -4,6 +4,7 @@ use std::iter::FromIterator;
 
 use hash::{BuildMerkleHasher, MerkleHasher};
 use node::{Node, Branch, Leaf, Child};
+use proof::Proof;
 
 
 pub struct MerkleTree<V, S>
@@ -51,6 +52,80 @@ where
             Some(hasher.finish_full())
         } else {
             None
+        }
+    }
+
+    pub fn value_proof(&self, value: V) -> Vec<Box<[u8]>> {
+        if let Some(ref root) = self.root {
+            let mut hasher = self.hasher_builder.build_hasher();
+            value.hash(&mut hasher);
+            self.data_proof(hasher.finish_full(), 0, root)
+        } else {
+            vec![]
+        }
+    }
+
+    pub fn tree_proof(&self, tree: MerkleTree<V, S>) -> Vec<Box<[u8]>> {
+        if let Some(root_hash) = tree.root_hash() {
+            if let Some(ref root) = self.root {
+                self.data_proof(root_hash, 0, root)
+            } else {
+                vec![]
+            }
+        } else {
+            vec![]
+        }
+    }
+
+    fn data_proof(&self, hash: Box<[u8]>, height: usize, root: &Box<Node<V, S>>) -> Vec<Box<[u8]>> {
+        let root_height = root.height();
+        if height == root_height - 1 {
+            match (root.left(), root.right()) {
+                (&Some(box ref left), &Some(box ref right)) => {
+                    if *left.hash_value() == *hash {
+                        vec![right.hash_value()]
+                    } else if *right.hash_value() == *hash {
+                        vec![left.hash_value()]
+                    } else {
+                        vec![]
+                    }
+                },
+                (&Some(box ref left), _) => {
+                    if *left.hash_value() == *hash {
+                        vec![left.hash_value()]
+                    } else {
+                        vec![]
+                    }
+                },
+                (_, &Some(box ref right)) => {
+                    if *right.hash_value() == *hash {
+                        vec![right.hash_value()]
+                    } else {
+                        vec![]
+                    }
+                },
+                _ => vec![]
+            }
+        } else {
+            match (root.left(), root.right()) {
+                (&Some(ref left), &Some(ref right)) => {
+                    let mut vec = Vec::new();
+                    vec.extend(self.data_proof(hash.clone(), height, left));
+                    vec.extend(self.data_proof(hash.clone(), height, right));
+                    vec
+                },
+                (&Some(ref left), _) => {
+                    let mut vec = Vec::new();
+                    vec.extend(self.data_proof(hash.clone(), height, left));
+                    vec
+                },
+                (_, &Some(ref right)) => {
+                    let mut vec = Vec::new();
+                    vec.extend(self.data_proof(hash.clone(), height, right));
+                    vec
+                },
+                _ => vec![]
+            }
         }
     }
 

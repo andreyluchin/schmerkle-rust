@@ -2,6 +2,7 @@
 mod hash;
 mod node;
 mod tree;
+mod proof;
 
 #[cfg(test)]
 mod tests {

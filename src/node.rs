@@ -84,6 +84,20 @@ where
             &Node::Branch(ref branch) => branch.is_final()
         }
     }
+
+    pub fn left(&self) -> &Option<Child<V, S>> {
+        match self {
+            &Node::Branch(ref branch) => branch.left(),
+            _ => &None
+        }
+    }
+
+    pub fn right(&self) -> &Option<Child<V, S>> {
+        match self {
+            &Node::Branch(ref branch) => branch.right(),
+            _ => &None
+        }
+    }
 }
 
 impl<V, S> Hash for Node<V, S>
@@ -216,9 +230,11 @@ where
             },
             (&Some(ref left), _) => {
                 left.hash(state);
+                left.hash(state);                
             },
             (_, &Some(ref right)) => {
-                right.hash(state);                
+                right.hash(state);
+                right.hash(state);                                                
             },
             _ => ()
         }
