@@ -1,5 +1,6 @@
 use std::hash::Hash;
 use std::hash::Hasher;
+use std::fmt;
 
 use hash::MerkleHasher;
 use hash::BuildMerkleHasher;
@@ -194,9 +195,9 @@ where
 
     pub fn height(&self) -> usize {
         match (&self.left, &self.right) {
-            (&Some(ref left), &Some(ref right)) => bigger(left.height(), right.height()),
-            (&Some(ref left), _) => left.height(),
-            (_, &Some(ref right)) => right.height(),
+            (&Some(ref left), &Some(ref right)) => bigger(left.height(), right.height()) + 1,
+            (&Some(ref left), _) => left.height() + 1,
+            (_, &Some(ref right)) => right.height() + 1,
             _ => 0
         }
     }
@@ -249,3 +250,36 @@ fn bigger(first: usize, second: usize) -> usize {
     }
 }
 
+impl<V, S> fmt::Display for Node<V, S>
+where
+    V: Hash + Clone,
+    S: BuildMerkleHasher 
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for &byte in self.hash_value().as_ref() {
+            write!(f, "{:X}", byte)?;
+        }
+        write!(f, "\n");
+        if let &Some(ref left) = self.left() {
+            for &byte in left.hash_value().as_ref() {
+                write!(f, "{:X}", byte)?;
+            }
+            write!(f, " === ");
+        };
+        if let &Some(ref right) = self.right() {
+            for &byte in right.hash_value().as_ref() {
+                write!(f, "{:X}", byte)?;
+            }
+        };
+        if let &Some(ref left) = self.left() {
+            write!(f, "\n");            
+            left.fmt(f)?;
+        };
+        if let &Some(ref right) = self.right() {
+            write!(f, "\n");                    
+            right.fmt(f)?;
+        };
+
+        write!(f, "")
+    }
+}
