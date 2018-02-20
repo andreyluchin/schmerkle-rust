@@ -65,10 +65,10 @@ where
         }
     }
 
-    pub fn len(&self) -> usize {
+    pub fn leaf_count(&self) -> usize {
         match self {
             &Node::Leaf(_) => 1,
-            &Node::Branch(ref branch) => branch.len()
+            &Node::Branch(ref branch) => branch.leaf_count()
         }
     }
 
@@ -184,11 +184,11 @@ where
         &self.hasher_builder
     }
 
-    pub fn len(&self) -> usize {
+    pub fn leaf_count(&self) -> usize {
         match (&self.left, &self.right) {
-            (&Some(ref left), &Some(ref right)) => left.len() + right.len(),
-            (&Some(ref left), _) => left.len(),
-            (_, &Some(ref right)) => right.len(),
+            (&Some(ref left), &Some(ref right)) => left.leaf_count() + right.leaf_count(),
+            (&Some(ref left), _) => left.leaf_count(),
+            (_, &Some(ref right)) => right.leaf_count(),
             _ => 0
         }
     }

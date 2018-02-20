@@ -60,7 +60,7 @@ where
         }
     }
 
-    pub fn value_proof(&self, value: V) -> Vec<Proof> {
+    pub fn value_proof(&self, value: &V) -> Vec<Proof> {
         if let Some(ref root) = self.root {
             let mut hasher = self.hasher_builder.build_hasher();
             value.hash(&mut hasher);
@@ -87,6 +87,14 @@ where
             root.height()
         } else {
             0
+        }
+    }
+
+    pub fn leaf_count(&self)-> Option<usize> {
+        if let Some(ref root) = self.root {
+            Some(root.leaf_count())
+        } else {
+            None
         }
     }
 
@@ -143,15 +151,16 @@ where
     }
 
     fn rebuild_tree(&mut self) {
-        let nodes_len = self.nodes_len();
+        let nodes_len = self.nodes_leaf_count();
         match self.root {
             _ if self.nodes.is_empty() => self.root = None,
-            Some(ref node) if node.len() >= self.nodes_len() => (),
+            Some(ref node) if node.leaf_count() >= self.nodes_leaf_count() => (),
             _ => {
                 let root = self.build_tree(f64::log2(nodes_len as f64).ceil() as usize);
+                self.nodes = VecDeque::new();
                 if let Some(ref unwrapped_root) = root {
                     self.recycle(unwrapped_root)
-                };
+                }
                 self.root = root;
             }
         };
@@ -169,33 +178,21 @@ where
     }
 
     fn recycle(&mut self, root: &Child<V, S>) {
-        self.nodes = VecDeque::new();
-        if let &box Node::Branch(ref branch) = root {
-            match branch.left() {
-                &Some(box Node::Branch(ref left)) if left.is_final() =>
-                    self.nodes.push_back(Box::new(Node::Branch((*left).clone()))),
-                &Some(box Node::Branch(ref left)) =>
-                    self.recycle(&Box::new(Node::Branch((*left).clone()))),
-                &Some(ref leaf) => self.nodes.push_back((*leaf).clone()),
-                _ => ()
-            };
-            match branch.right() {
-                &Some(box Node::Branch(ref right)) if right.is_final() =>
-                    self.nodes.push_back(Box::new(Node::Branch((*right).clone()))),
-                &Some(box Node::Branch(ref right)) =>
-                    self.recycle(&Box::new(Node::Branch((*right).clone()))),
-                &Some(ref leaf) => self.nodes.push_back((*leaf).clone()),
-                _ => ()           
-            };
+        if root.is_final() {
+            self.nodes.push_back(root.clone())
         } else {
-            self.nodes.push_back((*root).clone())
+            if let &Some(ref left) = root.left() {
+                self.recycle(left);
+            }
+            if let &Some(ref right) = root.right() {
+                self.recycle(right);
+            }
         }
-        
     }
 
-    fn nodes_len(&self) -> usize {
+    fn nodes_leaf_count(&self) -> usize {
         self.nodes.iter()
-            .fold(0, |acc, child| acc + child.len())
+            .fold(0, |acc, child| acc + child.leaf_count())
     }
 }
 
@@ -265,6 +262,17 @@ mod tests {
     }
 
     #[test]
+    fn test_leaf_count() {
+        let first = make_tree();
+        let mut second = make_tree();
+        println!("{} vs {}", first.leaf_count().unwrap(),second.leaf_count().unwrap());
+        assert!(first.leaf_count().unwrap() == second.leaf_count().unwrap());
+        second.insert(TestStruct(0));
+        println!("{} vs {}", first.leaf_count().unwrap(),second.leaf_count().unwrap());        
+        assert!(first.leaf_count().unwrap() + 1 == second.leaf_count().unwrap());
+    }
+
+    #[test]
     fn test_tree_hashes() {
         println!("RUNNING TEST");
         let first = make_tree();
@@ -298,23 +306,35 @@ mod tests {
         let value = TestStruct(3);
         let hasher_builder = BuildHasherDefault::default();
 
-        let mut hasher = hasher_builder.build_hasher();
-        value.hash(&mut hasher);
-        let mut current_hash = hasher.finish_full();
-
         let tree = make_tree();
-        let proof = tree.value_proof(value);
+        let proof = tree.value_proof(&value);
         assert!(!proof.is_empty());
 
-        for piece in proof {
+        let mut current_hash;
+        match proof[0] {
+            Proof::Left(ref hash) => {
+                let mut hasher = hasher_builder.build_hasher();
+                hasher.write(hash.as_ref());
+                value.hash(&mut hasher);                   
+                current_hash = hasher.finish_full();
+            },
+            Proof::Right(ref hash) => {
+                let mut hasher = hasher_builder.build_hasher();
+                value.hash(&mut hasher);                   
+                hasher.write(hash.as_ref());                                       
+                current_hash = hasher.finish_full();
+            }
+        }
+
+        for piece in proof[1..].iter() {
             match piece {
-                Proof::Left(hash) => {
+                &Proof::Left(ref hash) => {
                     let mut hasher = hasher_builder.build_hasher();
                     hasher.write(hash.as_ref());
                     hasher.write(current_hash.as_ref());                    
                     current_hash = hasher.finish_full();
                 },
-                Proof::Right(hash) => {
+                &Proof::Right(ref hash) => {
                     let mut hasher = hasher_builder.build_hasher();
                     hasher.write(current_hash.as_ref());
                     hasher.write(hash.as_ref());                                       
