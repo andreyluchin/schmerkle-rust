@@ -1,7 +1,7 @@
 # schmerkle-rust
 Merkle Tree implemented in Rust.
 
-# Usage
+## Usage
 1. Implement MerkleHasher
 2. Implement BuildMerkleHasher
 3. Implement Hash and Clone for your data
@@ -40,18 +40,18 @@ use std::mem::transmute;
     }
  ```
  
- # Domain
+ ## Domain
  Merkle trees are mostly used in blockchains and some databases for data verification and consistency verification.
  Despite the general concept being roughly the same in all implementation, there are few things that change from one specification to another.
  This project addresses one of them: Custom Hashing.
  Other things like single node hashing (which are hashed twice in Schmerkle) cannot be changed.
  
- # Philosophy
+ ## Philosophy
  Schmerkle embraces two concepts:
       1. Hashing interface akin to standard library (via Hash, Hasher, HasherBuilder traits), which makes it agnostic to hashing crates chosen by the user.
       2. The idea of `final nodes`
       
- # Final Nodes
+ ## Final Nodes
  Before explaining final nodes and why are they used in Schmerkle it is important to emphasize on the fact that values inserted in Merkle Tree preserve insertion order.
  This is done to make consistency verification possible.
  
