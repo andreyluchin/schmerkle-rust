@@ -56,15 +56,15 @@ use std::mem::transmute;
  This is done to make consistency verification possible.
  
  Final node is a node that has no siblingless leaves:
-    01
-    /\  -- Final Node
-   0  1
+    01  
+    /\    -- Final Node
+   0  1  
    
-   0123
-    /\
-   01 23   -- Final Node
-  /\  /\
-  0 1 2 3
+   0123  
+    /\  
+   01 23     -- Final Node
+  /\  /\  
+  0 1 2 3  
   
   0 -- Single value (leaf) is a final node itself
   
