@@ -56,6 +56,7 @@ use std::mem::transmute;
  This is done to make consistency verification possible.
  
  Final node is a node that has no siblingless leaves:
+ ```
     01  
     /\    -- Final Node
    0  1  
@@ -67,6 +68,7 @@ use std::mem::transmute;
   0 1 2 3  
   
   0 -- Single value (leaf) is a final node itself
+  ```
   
   When insertion means rebuilding a tree with bigger height, final nodes don't change, so it would be wise to reuse them.
   This saves us from composing rehashing nodes over and over when it is not necessary.
