@@ -5,6 +5,21 @@ use std::fmt;
 use hash::MerkleHasher;
 use hash::BuildMerkleHasher;
 
+
+// Node is either a leaf that holds a value
+//  or a branch that holds hash of its children
+//
+// Nodes are immutable.
+// Node enum is the main interface to nodes, 
+//  Branch and Leaf struct methods should only be used when
+//  absolutely necessary.
+//
+// Nodes can be `final`. 
+// That means that there are no siblingless leaves in a node or its children.
+//
+// Siblingless leaves in a node are hashed twice (!!!)
+//  to substitute the missing sibling
+
 pub type Child<V, S> = Box<Node<V, S>>;
 pub type HashValue = Box<[u8]>;
 

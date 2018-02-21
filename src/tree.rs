@@ -2,8 +2,21 @@ use std::hash::Hash;
 use std::collections::VecDeque;
 use std::fmt;
 
-use hash::{BuildMerkleHasher, MerkleHasher};
+use hash::{BuildMerkleHasher};
 use node::{Node, Child};
+
+
+// MerkleTree is the main user interface.
+//
+// This implementation is driven by two main ideas:
+//  1) Use familiar hashing interface (Hash, Hasher, HasherBuilder);
+//  2) Reuse `final` nodes when reconstructing trees.
+//     This eliminates the need of rehashing and rebuilding
+//     nodes unnecessarly. (see build_tree())
+//
+// value_proof() and tree_proof() produce membership 
+//  and consistency proofs respectively, which is made possible
+//  by the fact that leaves preserve insertion order (!!!).
 
 
 pub enum Proof {
