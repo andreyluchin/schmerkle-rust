@@ -11,9 +11,8 @@ mod tests {
     use std::mem::transmute;
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{BuildHasherDefault, Hasher, Hash};
-    use std::str;
 
-    use tree::{MerkleTree, Proof};
+    use tree::{MerkleTree, Proof, prove};
     use hash::{MerkleHasher, BuildMerkleHasher};
 
 
@@ -96,5 +95,17 @@ mod tests {
         }
         println!();
         assert!(first_hash != second_hash);
+    }
+
+    #[test]
+    fn test_proof() {
+        let tree = make_tree();
+        let target = TestStruct(3);
+        let mut hasher = tree.hasher_builder().build_hasher();
+        target.hash(&mut hasher);
+        let target_hash = hasher.finish_full();
+        let proof = tree.value_proof(&target);
+        assert!(proof.len() == tree.height());
+        assert!(prove(&target_hash, &proof, &tree))
     }
 }

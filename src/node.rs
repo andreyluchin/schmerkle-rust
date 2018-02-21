@@ -241,16 +241,16 @@ where
     fn hash<H: Hasher>(&self, state: &mut H) {
         match (&self.left, &self.right) {
             (&Some(ref left), &Some(ref right)) => {
-                left.hash(state);
-                right.hash(state)
+                left.hash_value().as_ref().hash(state);
+                right.hash_value().as_ref().hash(state)
             },
             (&Some(ref left), _) => {
-                left.hash(state);
-                left.hash(state);                
+                left.hash_value().as_ref().hash(state);                
+                left.hash_value().as_ref().hash(state);                                
             },
             (_, &Some(ref right)) => {
-                right.hash(state);
-                right.hash(state);                                                
+                right.hash_value().as_ref().hash(state);                
+                right.hash_value().as_ref().hash(state);                                              
             },
             _ => ()
         }

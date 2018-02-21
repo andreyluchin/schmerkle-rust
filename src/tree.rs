@@ -1,8 +1,8 @@
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::collections::VecDeque;
 use std::fmt;
 
-use hash::{BuildMerkleHasher};
+use hash::{BuildMerkleHasher, MerkleHasher};
 use node::{Node, Child};
 
 
@@ -22,6 +22,36 @@ use node::{Node, Child};
 pub enum Proof {
     Left(Box<[u8]>),
     Right(Box<[u8]>)    
+}
+
+pub fn prove<V, S>(target: &[u8], proof: &[Proof], tree: &MerkleTree<V, S>) -> bool
+where 
+    V: Hash + Clone,
+    S: BuildMerkleHasher
+{
+    if let Some(root_hash) = tree.root_hash() {
+        let hasher_builder = tree.hasher_builder();
+        let mut current_hash: Box<[u8]> = Box::from(target);
+        for piece in proof {
+            match piece {
+                &Proof::Left(ref left_hash) => {
+                    let mut hasher = hasher_builder.build_hasher();
+                    (*left_hash).as_ref().hash(&mut hasher);
+                    current_hash.as_ref().hash(&mut hasher);
+                    current_hash = hasher.finish_full();
+                },
+                &Proof::Right(ref right_hash) => {
+                    let mut hasher = hasher_builder.build_hasher();
+                    current_hash.as_ref().hash(&mut hasher);                            
+                    (*right_hash).as_ref().hash(&mut hasher);
+                    current_hash = hasher.finish_full();
+                },
+            }
+        }
+        *current_hash == *root_hash
+    } else {
+        false
+    }
 }
 
 
