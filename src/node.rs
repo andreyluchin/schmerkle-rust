@@ -259,14 +259,14 @@ where
         for &byte in self.hash_value().as_ref() {
             write!(f, "{:X}", byte)?;
         }
-        write!(f, "\n");
         if let &Some(ref left) = self.left() {
+            write!(f, "\nLeft: ");            
             for &byte in left.hash_value().as_ref() {
                 write!(f, "{:X}", byte)?;
             }
-            write!(f, " === ");
         };
         if let &Some(ref right) = self.right() {
+            write!(f, "\nRight: ");                        
             for &byte in right.hash_value().as_ref() {
                 write!(f, "{:X}", byte)?;
             }

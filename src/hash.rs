@@ -1,4 +1,4 @@
-use std::hash::Hasher;
+use std::hash::{Hash, Hasher};
 
 // Standard Hasher trait is constrained to 64bit hashes
 // by finish() method.

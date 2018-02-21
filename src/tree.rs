@@ -60,20 +60,23 @@ where
         }
     }
 
+    pub fn root(&self) -> &Option<Child<V,S>> {
+        &self.root
+    }
+
     pub fn value_proof(&self, value: &V) -> Vec<Proof> {
         if let Some(ref root) = self.root {
-            let mut hasher = self.hasher_builder.build_hasher();
-            value.hash(&mut hasher);
-            self.data_proof(hasher.finish_full(), 0, root)
+            let node = Box::new(Node::new_leaf(value.clone(), self.hasher_builder.clone()));
+            self.data_proof(&node, &mut vec![root])
         } else {
             vec![]
         }
     }
 
     pub fn tree_proof(&self, tree: MerkleTree<V, S>) -> Vec<Proof> {
-        if let Some(root_hash) = tree.root_hash() {
+        if let &Some(ref target) = tree.root() {
             if let Some(ref root) = self.root {
-                self.data_proof(root_hash, 0, root)
+                self.data_proof(target,&mut vec![root])
             } else {
                 vec![]
             }
@@ -98,54 +101,63 @@ where
         }
     }
 
-    fn data_proof(&self, hash: Box<[u8]>, height: usize, root: &Box<Node<V, S>>) -> Vec<Proof> {
-        let root_height = root.height();
-        if height + 1 == root_height {
-            match (root.left(), root.right()) {
-                (&Some(box ref left), &Some(box ref right)) => {
-                    if *left.hash_value() == *hash {
-                        vec![Proof::Right(right.hash_value())]
-                    } else if *right.hash_value() == *hash {
-                        vec![Proof::Left(left.hash_value())]
-                    } else {
-                        vec![]
-                    }
-                },
-                (&Some(box ref left), _) => {
-                    if *left.hash_value() == *hash {
-                        vec![Proof::Right(left.hash_value())]
-                    } else {
-                        vec![]
-                    }
-                },
-                (_, &Some(box ref right)) => {
-                    if *right.hash_value() == *hash {
-                        vec![Proof::Left(right.hash_value())]
-                    } else {
-                        vec![]
-                    }
-                },
-                _ => vec![]
-            }
-        } else {
-            match (root.left(), root.right()) {
-                (&Some(ref left), &Some(ref right)) => {
-                    let mut vec = Vec::new();
-                    vec.extend(self.data_proof(hash.clone(), height, left));
-                    vec.extend(self.data_proof(hash.clone(), height, right));
-                    vec
-                },
-                (&Some(ref left), _) => {
-                    let mut vec = Vec::new();
-                    vec.extend(self.data_proof(hash.clone(), height, left));
-                    vec
-                },
-                (_, &Some(ref right)) => {
-                    let mut vec = Vec::new();
-                    vec.extend(self.data_proof(hash.clone(), height, right));
-                    vec
-                },
-                _ => vec![]
+    pub fn hasher_builder(&self) -> S {
+        self.hasher_builder.clone()
+    }
+
+    fn data_proof<'a>(
+        &self, target: &Child<V, S>, 
+        parent_stack: &mut Vec<&'a Child<V, S>>) -> Vec<Proof> 
+    {
+        match *parent_stack.as_slice() {
+            [] => vec![],
+
+            [.., parent] if target.height() + 1 == parent.height() => {
+                let parent = parent_stack.pop().unwrap();
+                match (parent.left(), parent.right()) {
+                    (&Some(ref left), &Some(ref right)) if left.hash_value() == target.hash_value() => {
+                        let mut result = vec![Proof::Right(right.hash_value())];
+                        result.append(&mut self.data_proof(parent, parent_stack));
+                        result
+                    },
+                    (&Some(ref left), &Some(ref right)) if right.hash_value() == target.hash_value() => {
+                        let mut result = vec![Proof::Left(left.hash_value())];
+                        result.append(&mut self.data_proof(parent, parent_stack));
+                        result
+                    },
+                    (&Some(ref left), _) if left.hash_value() == target.hash_value() => {
+                        let mut result = vec![Proof::Right(left.hash_value())];
+                        result.append(&mut self.data_proof(parent, parent_stack));
+                        result
+                    },
+                    (_, &Some(ref right)) if right.hash_value() == target.hash_value() => {
+                        let mut result = vec![Proof::Left(right.hash_value())];
+                        result.append(&mut self.data_proof(parent, parent_stack));
+                        result
+                    },
+                    _ => vec![]
+                }
+            },
+
+            [.., parent] => {
+                match (parent.left(), parent.right()) {
+                    (&Some(ref left), &Some(ref right)) => {
+                        parent_stack.push(left);
+                        let mut result = self.data_proof(target, parent_stack);
+                        parent_stack.push(right);
+                        result.append(&mut self.data_proof(target, parent_stack));
+                        result
+                    },
+                    (&Some(ref left), _) if left.hash_value() == target.hash_value() => {
+                        parent_stack.push(left);
+                        self.data_proof(target, parent_stack)
+                    },
+                    (_, &Some(ref right)) if right.hash_value() == target.hash_value() => {
+                        parent_stack.push(right);
+                        self.data_proof(target, parent_stack)
+                    },
+                    _ => vec![]
+                }
             }
         }
     }
@@ -207,153 +219,4 @@ where
             _ => write!(f, "")
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::mem::transmute;
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{BuildHasherDefault, Hasher, Hash};
-    use std::str;
-
-    use tree::{MerkleTree, Proof};
-    use hash::{MerkleHasher, BuildMerkleHasher};
-
-
-    #[derive(Clone, Hash)]
-    struct TestStruct(u64);
-
-    impl MerkleHasher for DefaultHasher {
-        fn finish_full(&self) -> Box<[u8]> {
-            let slice: [u8;8] = unsafe { transmute((*self).finish().to_be()) };
-            Box::new(slice)
-        }
-    }
-
-    impl BuildMerkleHasher for BuildHasherDefault<DefaultHasher> {
-        type Hasher = DefaultHasher;
-        fn build_hasher(&self) -> DefaultHasher {
-            DefaultHasher::default()
-        }
-    }
-
-    fn make_tree() -> MerkleTree<TestStruct, BuildHasherDefault<DefaultHasher>> {
-        let mut tree = MerkleTree::with_hasher(BuildHasherDefault::default());
-        tree.insert_items(vec![TestStruct(0), TestStruct(1), TestStruct(2), TestStruct(3), TestStruct(4), TestStruct(5), TestStruct(6)]);
-        tree
-    }
-    
-    fn make_small_tree() -> MerkleTree<TestStruct, BuildHasherDefault<DefaultHasher>> {
-        let mut tree = MerkleTree::with_hasher(BuildHasherDefault::default());
-        tree.insert_items(vec![TestStruct(1), TestStruct(2)]);
-        tree
-    }
-
-    #[test]
-    fn test_height() {
-        let small_tree = make_small_tree();        
-        let tree = make_tree();        
-        println!("Small tree height = {}", small_tree.height());
-        println!("{}", small_tree);
-        assert!(small_tree.height() == 1); 
-        println!("Tree height = {}", tree.height());
-        println!("{}", tree);              
-        assert!(tree.height() == 3);
-    }
-
-    #[test]
-    fn test_leaf_count() {
-        let first = make_tree();
-        let mut second = make_tree();
-        println!("{} vs {}", first.leaf_count().unwrap(),second.leaf_count().unwrap());
-        assert!(first.leaf_count().unwrap() == second.leaf_count().unwrap());
-        second.insert(TestStruct(0));
-        println!("{} vs {}", first.leaf_count().unwrap(),second.leaf_count().unwrap());        
-        assert!(first.leaf_count().unwrap() + 1 == second.leaf_count().unwrap());
-    }
-
-    #[test]
-    fn test_tree_hashes() {
-        println!("RUNNING TEST");
-        let first = make_tree();
-        let mut second = make_tree();
-        let first_hash = first.root_hash().unwrap();
-        let mut second_hash = second.root_hash().unwrap();
-        for &byte in first_hash.as_ref() {
-            print!("{:X}", byte);
-        }
-        print!(" vs ");
-        for &byte in second_hash.as_ref() {
-            print!("{:X}", byte);
-        }
-        println!();
-        assert!(*first_hash == *second_hash);
-        second.insert(TestStruct(0));
-        second_hash = second.root_hash().unwrap();
-        for &byte in first_hash.as_ref() {
-            print!("{:X}", byte);
-        }
-        print!(" vs ");
-        for &byte in second_hash.as_ref() {
-            print!("{:X}", byte);
-        }
-        println!();
-        assert!(*first_hash != *second_hash);
-    }
-
-    #[test]
-    fn test_value_proof() {
-        let value = TestStruct(3);
-        let hasher_builder = BuildHasherDefault::default();
-
-        let tree = make_tree();
-        let proof = tree.value_proof(&value);
-        assert!(!proof.is_empty());
-
-        let mut current_hash;
-        match proof[0] {
-            Proof::Left(ref hash) => {
-                let mut hasher = hasher_builder.build_hasher();
-                hasher.write(hash.as_ref());
-                value.hash(&mut hasher);                   
-                current_hash = hasher.finish_full();
-            },
-            Proof::Right(ref hash) => {
-                let mut hasher = hasher_builder.build_hasher();
-                value.hash(&mut hasher);                   
-                hasher.write(hash.as_ref());                                       
-                current_hash = hasher.finish_full();
-            }
-        }
-
-        for piece in proof[1..].iter() {
-            match piece {
-                &Proof::Left(ref hash) => {
-                    let mut hasher = hasher_builder.build_hasher();
-                    hasher.write(hash.as_ref());
-                    hasher.write(current_hash.as_ref());                    
-                    current_hash = hasher.finish_full();
-                },
-                &Proof::Right(ref hash) => {
-                    let mut hasher = hasher_builder.build_hasher();
-                    hasher.write(current_hash.as_ref());
-                    hasher.write(hash.as_ref());                                       
-                    current_hash = hasher.finish_full();
-                }
-            }
-            
-        }
-
-        let root_hash = tree.root_hash().unwrap();
-        for &byte in current_hash.as_ref() {
-            print!("{:X}", byte);
-        }
-        print!(" vs ");
-        for &byte in root_hash.as_ref() {
-            print!("{:X}", byte);
-        }
-        println!();
-        assert!(*current_hash == *root_hash)
-    }
-    
 }
