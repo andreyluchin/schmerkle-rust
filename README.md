@@ -71,4 +71,4 @@ use std::mem::transmute;
   ```
   
   When insertion means rebuilding a tree with bigger height, final nodes don't change, so it would be wise to reuse them.
-  This saves us from composing rehashing nodes over and over when it is not necessary.
+  This saves us from composing and rehashing nodes over and over when it is not necessary.
